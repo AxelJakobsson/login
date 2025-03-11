@@ -55,6 +55,18 @@ app.post("/login", async (req, res) => {
   res.send(`Hello ${name}, you tried to log in!`);
 });
 
+app.get("/createAccount", (req, res) => {
+  res.render("createAccount.njk", 
+    { title: "Create account" }
+  )
+})
+
+app.post("/createAccount", async (req, res) => {
+  const {name, password } = req.body;
+  const [results] = await pool.promise().query("INSERT INTO User (name, password) VALUES (?, ?)", [name, password]);
+  res.redirect("/");
+});
+
 
 
 let myPlainTextPassword = "mittlösenord"
