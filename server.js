@@ -39,19 +39,9 @@ app.get("/", (req, res) => {
 });
 
 app.get("/login", async (req, res) => {
-
-  const myPlaintextPassword = "test123"
-  const name = "testUser"
-
-
-  bcrypt.hash(myPlaintextPassword, saltRounds, function(err, hash) {
-    // Store hash in your password DB.
-    pool.promise().query(`INSERT INTO User (name, hashed) VALUES (?, ?)`, [name, hash])
-
-    res.render("login.njk",
-      { title: "Login", message: hash }
-  )
-});
+    res.render("login.njk", {
+       title: "Login" 
+      })
 });
 
 app.post("/login", async (req, res) => {
@@ -76,34 +66,56 @@ app.post("/login", async (req, res) => {
       res.sendStatus(401)
     }
   })
-
-
 })
 
 app.get("/createAccount", (req, res) => {
   res.render("createAccount.njk", 
     { title: "Create account" }
   )
-})
+})  
+
 
 app.post("/createAccount", async (req, res) => {
-  const {name, password } = req.body;
+  const { name, password } = req.body;
 
-  bcrypt.hash(password, saltRounds, function(err, hash) {
-    // Store hash in your password DB.
+  const [users] = await pool.promise().query("SELECT * FROM User WHERE name = ?", [name]);
+  if (users.length > 0) {
+    return res.status(400).send("User already exists");
+  }
+
+  bcrypt.hash(password, saltRounds, function (err, hash) {
+    if (err) {
+      console.error("Error hashing password:", err);
+      return res.status(500).send("Internal server error");
+    }
     pool.promise().query("INSERT INTO User (name, hashed) VALUES (?, ?)", [name, hash])
+    res.redirect("/")
+      });
   });
-  res.redirect("/")
-});
+
+
+
 
 app.get("/hemligsida", (req, res) => {
   if (req.session.loggedIn == true) {
-    console.log(req.session.loggedIn + "worked")
+    console.log(req.session.loggedIn + " worked")
     res.render("index.njk", { title: "Hemlig sida" })
-  } else {
-    console.log(req.session.loggedIn + "failed")
-    res.status(401).send("Unauthorizedd")
+  } 
+  else if (req.session.loggedIn == undefined) {
+    console.log(req.session.loggedIn + " undefined")
+    res.status(401).send("Unauthorized")
   }
+  else {
+    console.log(req.session.loggedIn + " failed")
+    res.status(401).send("Unauthorized")
+  }
+})
+
+app.get("/logout", (req, res) => {
+  req.session.destroy(function(err) {
+    console.log("Logged out")
+    res.redirect("/")
+  })
 })
 
 app.listen(port, () => {
